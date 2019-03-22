@@ -1,4 +1,4 @@
-# Download all file links inside the site domain
+# Download all file links recursively inside the site domain
 Downloads all file links inside the site domain. 
 Starts on a page and follows all links recursively.
 Creates the same folder structure on disk.
