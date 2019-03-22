@@ -14,7 +14,9 @@ namespace SiteDownloader
     class Program
     {
         static string baseUrl = @"https://doc.lagout.org/";
-        static string basePath = @"e:\o";
+        static string startingPageUrl = @"https://doc.lagout.org/";
+        static string baseDiskPath = @"e:\o";
+        
         static StringBuilder logs = new StringBuilder();
         static HashSet<string> visitedFileUrls = new HashSet<string>();
         static HashSet<string> visitedPageUrls = new HashSet<string>();
@@ -30,12 +32,10 @@ namespace SiteDownloader
             ServicePointManager.ServerCertificateValidationCallback += ValidateRemoteCertificate;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
-            var startingPageUrl = @"https://doc.lagout.org/";
-
             Log("Begin downloading site. Starting at: " + startingPageUrl);
             DownloadFilesOnPage(startingPageUrl);
             Log("Site download complete.");
-            File.WriteAllText(basePath + @"\download logs.txt", logs.ToString());
+            File.WriteAllText(baseDiskPath + @"\download logs.txt", logs.ToString());
             Console.ReadKey();
         }
 
@@ -98,7 +98,7 @@ namespace SiteDownloader
 
             visitedFileUrls.Add(fullUrl);
 
-            var fullPath = basePath + @"\" + fullUrl.Replace(baseUrl, "");
+            var fullPath = baseDiskPath + @"\" + fullUrl.Replace(baseUrl, "");
             fullPath = DecodeUrlString(fullPath).Replace(@"/", @"\");
             if (ShouldIgnoreUrl(fullPath))
                 return;
