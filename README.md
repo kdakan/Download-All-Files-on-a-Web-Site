@@ -5,6 +5,7 @@ Creates the same folder structure on disk.
 Uses ```HtmlAgilityPack``` nuget package to parse link hrefs on the pages.
 
 I wrote and tested this small program to download all books and documents hosted under https://doc.lagout.org
+It does not do parallel downloads because the site I tested it on wasn't stable and throttled requests.
 
 You can change the following values to download from another site domain, start from another home page, and change the root disk location for downloads:
 ```cs
