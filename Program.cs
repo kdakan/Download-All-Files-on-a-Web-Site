@@ -18,21 +18,21 @@ namespace SiteDownloader
         static string baseDiskPath = @"e:\o";
         static long maxFileSize = 1024 * 1024 * 1024 / 2;//max half GB
 
-        static StringBuilder logs = new StringBuilder();
-        static StringBuilder errorLogs = new StringBuilder();
+        //static StringBuilder logs = new StringBuilder();
+        //static StringBuilder errorLogs = new StringBuilder();
 
         static HashSet<string> visitedFileUrls = new HashSet<string>();
         static HashSet<string> visitedPageUrls = new HashSet<string>();
-        
+
         static void Log(string line)
         {
-            logs.AppendLine(line);
-            Console.WriteLine(line);
+            //File.AppendAllText(baseDiskPath + @"\download logs.txt", line + @"\n");
+            //Console.WriteLine(line);
         }
 
         static void LogError(string line)
         {
-            errorLogs.AppendLine(line);
+            //File.AppendAllText(baseDiskPath + @"\download error logs.txt", line + @"\n");
             Console.WriteLine(line);
         }
         static void Main(string[] args)
@@ -43,8 +43,7 @@ namespace SiteDownloader
             Log("Begin downloading site. Starting at: " + startingPageUrl);
             DownloadFilesOnPage(startingPageUrl);
             Log("Site download complete. Started at: " + startingPageUrl);
-            File.WriteAllText(baseDiskPath + @"\download logs.txt", logs.ToString());
-            File.WriteAllText(baseDiskPath + @"\download error logs.txt", errorLogs.ToString());
+
             Console.ReadKey();
         }
 
@@ -55,10 +54,10 @@ namespace SiteDownloader
 
             visitedPageUrls.Add(pageUrl);
 
-            if (ShouldIgnoreUrl(pageUrl))
+            var pageUrlDecoded = DecodeUrlString(pageUrl);
+            if (ShouldSkipUrl(pageUrlDecoded))
                 return;
 
-            var pageUrlDecoded = DecodeUrlString(pageUrl);
             Log("Begin downloading files on page: " + pageUrlDecoded);
 
             HtmlWeb web = new HtmlWeb();
@@ -68,32 +67,44 @@ namespace SiteDownloader
 
             Parallel.ForEach(doc.DocumentNode.SelectNodes("//a[@href]"), new ParallelOptions { MaxDegreeOfParallelism = 8 }, a =>
             {
-                var href = a.GetAttributeValue("href", string.Empty);
-                if (string.IsNullOrEmpty(href) ||
-                    href == @"../" ||
-                    href.StartsWith("mailto:") ||
-                    href.StartsWith("javascript:") ||
-                    href.StartsWith("#") ||
-                    href.StartsWith(@"ftp://")
-                    )
-                    return;
+                try
+                {
+                    if (a == null)
+                    {
+                        return;
+                    }
+                    var href = a.GetAttributeValue("href", string.Empty);
+                    if (string.IsNullOrEmpty(href) ||
+                            href == @"../" ||
+                            href.StartsWith("mailto:") ||
+                            href.StartsWith("javascript:") ||
+                            href.StartsWith("#") ||
+                            href.StartsWith(@"ftp://")
+                            )
+                        return;
 
-                var fullUrl = getFullUrl(pageUrl, href);
-                if (!fullUrl.StartsWith(baseUrl))
-                    return;
+                    var fullUrl = getFullUrl(pageUrl, href);
+                    if (!fullUrl.StartsWith(baseUrl))
+                        return;
 
-                var fullPath = GetFullPath(fullUrl);
-                fullPath = FixInvalidLengthAndCharactersInFullPath(fullPath);
-                if (ShouldIgnoreUrl(fullUrl) || File.Exists(fullPath))
-                    return;
+                    var fullPath = GetFullPath(fullUrl);
+                    fullPath = FixInvalidLengthAndCharactersInFullPath(fullPath);
+                    if (ShouldSkipUrl(fullUrl) || File.Exists(fullPath))
+                        return;
 
-                var contentTypeAndSize = GetContentTypeAndSize(fullUrl);
-                var contentType = contentTypeAndSize.Item1;
-                var size = contentTypeAndSize.Item2;
-                if (contentType.ToLowerInvariant().Contains("html"))
-                    pageUrls.Add(fullUrl);
-                else if (size < maxFileSize)
-                    fileUrls.Add(fullUrl);
+                    var contentTypeAndSize = GetContentTypeAndSize(fullUrl);
+                    var contentType = contentTypeAndSize.Item1;
+                    var size = contentTypeAndSize.Item2;
+                    if (contentType.ToLowerInvariant().Contains("html"))
+                        pageUrls.Add(fullUrl);
+                    else if (size < maxFileSize)
+                        fileUrls.Add(fullUrl);
+                }
+                catch (Exception e)
+                {
+                    LogError(e.Message);
+                }
+
             });
 
             Parallel.ForEach(fileUrls, new ParallelOptions { MaxDegreeOfParallelism = 8 }, url =>
@@ -148,7 +159,7 @@ namespace SiteDownloader
             visitedFileUrls.Add(fullUrl);
 
             var fullPath = GetFullPath(fullUrl);
-            if (ShouldIgnoreUrl(fullPath))
+            if (ShouldSkipUrl(fullPath))
                 return;
 
             fullPath = FixInvalidLengthAndCharactersInFullPath(fullPath);
@@ -170,15 +181,16 @@ namespace SiteDownloader
                     webClient.DownloadFile(fullUrl, fullPath);
                 }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 LogError(fullPath);
                 LogError(e.Message);
+                File.Delete(fullPath);
             }
 
         }
 
-        static bool ShouldIgnoreUrl(string url)
+        static bool ShouldSkipUrl(string url)
         {
             var urlLower = url.ToLowerInvariant();
             if (
@@ -186,7 +198,8 @@ namespace SiteDownloader
                 urlLower.EndsWith(@"/network/") ||
                 urlLower.EndsWith(@"/s8zone_fichiers/") ||
                 urlLower.EndsWith(@"/mame/") ||
-                urlLower.EndsWith(@"/Belgian Hackers Zone/") || 
+                urlLower.EndsWith(@"/belgian hackers zone/") ||
+                urlLower.EndsWith(@"/0_computer history/") ||
                 urlLower.EndsWith(@".iso") ||
                 urlLower.EndsWith(@".md5") ||
                 urlLower.EndsWith(@".md5sum") ||
@@ -203,6 +216,19 @@ namespace SiteDownloader
 
             return false;
         }
+        //static string DownloadPage(string url)
+        //{
+        //    using (WebClient webClient = new WebClient())
+        //    {
+        //        webClient.Headers.Add("user -agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.2; .NET CLR 1.0.3705;)");
+        //        var stream = webClient.OpenRead(url);
+        //        using (StreamReader sr = new StreamReader(stream))
+        //        {
+        //            var page = sr.ReadToEnd();
+        //            return page;
+        //        }
+        //    }
+        //}
 
         static string DecodeUrlString(string url)
         {
@@ -239,6 +265,6 @@ namespace SiteDownloader
 
             return new Tuple<string, long>(contentType, size);
         }
-        
+
     }
 }
