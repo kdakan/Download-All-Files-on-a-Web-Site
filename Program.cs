@@ -17,6 +17,7 @@ namespace SiteDownloader
         static string startingPageUrl = @"https://doc.lagout.org/";
         static string baseDiskPath = @"e:\o";
         static long maxFileSize = 1024 * 1024 * 1024 / 2;//max half GB
+        static int maxParallelDownloads = 8;
 
         //static StringBuilder logs = new StringBuilder();
         //static StringBuilder errorLogs = new StringBuilder();
@@ -27,7 +28,7 @@ namespace SiteDownloader
         static void Log(string line)
         {
             //File.AppendAllText(baseDiskPath + @"\download logs.txt", line + @"\n");
-            //Console.WriteLine(line);
+            Console.WriteLine(line);
         }
 
         static void LogError(string line)
@@ -42,7 +43,7 @@ namespace SiteDownloader
 
             Log("Begin downloading site. Starting at: " + startingPageUrl);
             DownloadFilesOnPage(startingPageUrl);
-            Log("Site download complete. Started at: " + startingPageUrl);
+            Log("Site download complete.");
 
             Console.ReadKey();
         }
@@ -102,12 +103,21 @@ namespace SiteDownloader
                 }
                 catch (Exception e)
                 {
+                    LogError("==================================================");
                     LogError(e.Message);
+                    LogError(e.StackTrace);
+                    LogError("pageUrlDecoded:");
+                    LogError(pageUrlDecoded);
+                    LogError("OuterHtml:");
+                    LogError(a.OuterHtml);
+                    LogError("href:");
+                    LogError(a.GetAttributeValue("href", string.Empty));
+                    LogError("--------------------------------------------------");
                 }
 
             });
 
-            Parallel.ForEach(fileUrls, new ParallelOptions { MaxDegreeOfParallelism = 8 }, url =>
+            Parallel.ForEach(fileUrls, new ParallelOptions { MaxDegreeOfParallelism = maxParallelDownloads }, url =>
             {
                 DownloadFile(url);
             });
@@ -183,9 +193,14 @@ namespace SiteDownloader
             }
             catch (Exception e)
             {
-                LogError(fullPath);
+                LogError("==================================================");
                 LogError(e.Message);
-                File.Delete(fullPath);
+                LogError(e.StackTrace);
+                LogError(fullPath);
+                LogError("--------------------------------------------------");
+
+                if (File.Exists(fullPath))
+                    File.Delete(fullPath);
             }
 
         }
